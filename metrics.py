@@ -1,9 +1,9 @@
 import matplotlib.pyplot as plt
 from sklearn.metrics import confusion_matrix, f1_score, ConfusionMatrixDisplay
 
-def plot_result(item):
-    plt.plot(history.history[item], label=item)
-    plt.plot(history.history["val_" + item], label="val_" + item)
+def plot_result(item, model):
+    plt.plot(model.history[item], label=item)
+    plt.plot(model.history["val_" + item], label="val_" + item)
     plt.xlabel("Epochs")
     plt.ylabel(item)
     plt.title("Train and Validation {} Over Epochs".format(item), fontsize=14)
