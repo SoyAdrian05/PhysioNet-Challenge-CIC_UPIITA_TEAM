@@ -49,5 +49,5 @@ This is a first approximation in which we focus on the processing of the signals
    - Name: Blanca Tovar-Corona
    - Email: bltovar@ipn.mx
 4. Team Member 4:
-   - Name: René Luna-Tovar
+   - Name: René Luna-García
    - Email: rlunag@ipn.mx
