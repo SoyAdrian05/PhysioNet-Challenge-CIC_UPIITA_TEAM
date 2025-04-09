@@ -29,9 +29,11 @@ python run_code.py
 ## Load Data 
 This project exclusively uses the SAMI-TROP database. In order to run the program correctly, this database needs to be loaded. Here's an example of how data is loaded into your code:
 ```
-    if os.path.isdir("Samitrop"):
-        df_samitrop = pd.read_csv('Samitrop/exams.csv')
-        samitrop = h5py.File('Samitrop/exams.hdf5','r')
+if os.path.isdir("Samitrop"):
+    df_samitrop = pd.read_csv('Samitrop/exams.csv')
+    samitrop = h5py.File('Samitrop/exams.hdf5','r')
 ```
 Make sure you have the Samitrop folder in the working directory, which contains the exams.csv and exams.hdf5 files. The exams.csv file should include the tags needed for model training and evaluation, while exams.hdf5 should contain the electrocardiogram signals.
 
+## Note
+This is a first approximation in which we focus on the processing of the signals before applying the classification algorithm. The goal of this approach is to highlight the distinctive characteristics of each signal and provide the algorithm with a clean and optimized signal, thus facilitating its classification.
