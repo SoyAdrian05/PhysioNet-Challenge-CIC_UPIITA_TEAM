@@ -47,5 +47,4 @@ if __name__ == "__main__":
   ax.set_xticklabels(['Clase 0', 'Clase 1'])
   ax.set_yticklabels(['Clase 0', 'Clase 1'])
     
-    # Mostrar la matriz
   plt.show()
