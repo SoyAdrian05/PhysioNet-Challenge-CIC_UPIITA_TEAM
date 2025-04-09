@@ -18,7 +18,7 @@ if __name__ == "__main__":
   y_train_onehot = tf.keras.utils.to_categorical(y_train, num_classes=2)
   y_val_onehot = tf.keras.utils.to_categorical(y_val, num_classes=2)
 
-  epochs = 1
+  epochs = 100
 
   cnn_model_history = model.fit(x_train_split, y_train_onehot, epochs = epochs, batch_size=32, validation_data=(x_val_split, y_val_onehot))
   
