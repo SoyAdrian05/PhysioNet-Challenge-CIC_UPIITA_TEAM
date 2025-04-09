@@ -12,8 +12,7 @@ In this first installment, a proposal is presented that includes the preprocessi
 
 ## How do I run these scripts?
 
-First, you can install the dependencies for these scripts by creating a virtual environment and running the following command: 
-Create the virtual environmen. 
+First, you can install the dependencies for these scripts by creating a virtual environment and running the following command
 ```
 conda create --name <my-env> 
 ```
@@ -21,4 +20,18 @@ conda create --name <my-env>
 ```
 pip install -r requirements.txt
 ```
+
+Then, you can run the file `run_code.py` with the following command to train the model and evaluate the efficiency with the metrics: 
+```
+python run_code.py
+```
+
+## Load Data 
+This project exclusively uses the SAMI-TROP database. In order to run the program correctly, this database needs to be loaded. Here's an example of how data is loaded into your code:
+```
+    if os.path.isdir("Samitrop"):
+        df_samitrop = pd.read_csv('Samitrop/exams.csv')
+        samitrop = h5py.File('Samitrop/exams.hdf5','r')
+```
+Make sure you have the Samitrop folder in the working directory, which contains the exams.csv and exams.hdf5 files. The exams.csv file should include the tags needed for model training and evaluation, while exams.hdf5 should contain the electrocardiogram signals.
 
