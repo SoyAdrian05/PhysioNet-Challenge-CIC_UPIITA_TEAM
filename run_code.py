@@ -1,7 +1,6 @@
 from data_loader import *
 from CNNN1D import * 
-
-def train_model(model)
+from metrics import *
 
 if __name__ == "__main__":
   x_train,y_train, x_val, y_val = data_process()
@@ -10,6 +9,13 @@ if __name__ == "__main__":
 
   epochs = epochs
 
-  model.history = Convolutional1DNet.fit(x_train, y_train, epochs = epochs, batch_size=10, validation_data=(x_val, y_val))
+  cnn_model_history = model.fit(x_train, y_train, epochs = epochs, batch_size=10, validation_data=(x_val, y_val))
+  plot_result("loss", cnn_model_history)
+  plot_result("accuracy", cnn_model_history)
+
+  
+  y_pred = model.predict([ x_test_Wb, x_test_r, x_test_g, x_test_b])
+  pred_labels = np.argmax(y_pred, axis = 1)
+  confusion_matrix_metric(y_val, pred_labels)
 
 
