@@ -7,7 +7,7 @@ if __name__ == "__main__":
   model = create_cnn_model(x_train)
   model.compile(loss="binary_crossentropy", optimizer=tf.keras.optimizers.Adam(), metrics=["accuracy"])
 
-  epochs = epochs
+  epochs = 5
 
   cnn_model_history = model.fit(x_train, y_train, epochs = epochs, batch_size=10, validation_data=(x_val, y_val))
   plot_result("loss", cnn_model_history)
