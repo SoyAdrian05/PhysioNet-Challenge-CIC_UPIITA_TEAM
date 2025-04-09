@@ -82,5 +82,5 @@ def data_process():
     
     return x_train,y_train, x_val, y_val
 
-x_train,y_train, x_val, y_val = data_process()
+#x_train,y_train, x_val, y_val = data_process()
     
