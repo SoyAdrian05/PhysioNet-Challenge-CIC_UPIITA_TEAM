@@ -37,3 +37,17 @@ Make sure you have the Samitrop folder in the working directory, which contains 
 
 ## Note
 This is a first approximation in which we focus on the processing of the signals before applying the classification algorithm. The main objective of this proposal is to highlight the distinctive characteristics of each signal and provide the algorithm with a clean and optimized signal, thus facilitating its classification.
+
+## Authors
+1. Team Member 1:
+   - Name: José-Adrián Chávez-Olvera
+   - Email: jchavezo1603@alumno.ipn.mx
+2. Team Member 2:
+   - Name: Arián Villalba-Tapia
+   - Email: avillalbat1600@alumno.ipn.mx
+3. Team Member 3:
+   - Name: Blanca Tovar-Corona
+   - Email: bltovar@ipn.mx
+4. Team Member 4:
+   - Name: René Luna-Tovar
+   - Email: rlunag@ipn.mx
