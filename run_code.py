@@ -11,7 +11,7 @@ if __name__ == "__main__":
   x_train_split = [x_train[:, i, :].reshape(-1, 136, 1) for i in range(12)]
   x_val_split = [x_val[:, i, :].reshape(-1, 136, 1) for i in range(12)]
   model = create_cnn_model(x_train)
-  #model.compile(loss="binary_crossentropy", optimizer=tf.keras.optimizers.Adam(), metrics=["accuracy"])
+  
   model.compile(optimizer='adam',
                 loss='categorical_crossentropy',
                 metrics=['accuracy'])
@@ -28,20 +28,20 @@ if __name__ == "__main__":
   y_pred = np.argmax(y_pred_prob, axis=1)
   cm = confusion_matrix(np.argmax(y_val_onehot, axis=1), y_pred)
 
-    # Crear la figura de la matriz de confusión
+   
   fig, ax = plt.subplots(figsize=(6, 5))
   cax = ax.matshow(cm, cmap='Blues')
     
-    # Añadir los valores en cada celda
+    
   for (i, j), value in np.ndenumerate(cm):
      ax.text(j, i, str(value), ha='center', va='center', color='black')
     
-    # Añadir etiquetas y título
+   
   ax.set_xlabel('Predicción')
   ax.set_ylabel('Real')
   ax.set_title('Matriz de Confusión')
     
-    # Añadir las etiquetas de los ejes
+    
   ax.set_xticks([0, 1])
   ax.set_yticks([0, 1])
   ax.set_xticklabels(['Clase 0', 'Clase 1'])
