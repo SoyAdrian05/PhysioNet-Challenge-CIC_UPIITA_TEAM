@@ -91,7 +91,7 @@ def train_model(data_folder, model_folder, verbose):
 
     epochs = 100
 
-    cnn_model_history = model.fit(x_train_split, y_train_onehot, epochs = epochs, batch_size=32, validation_data=(x_val_split, y_val_onehot))
+    cnn_model_history = model.fit(signal_tensor, labels, epochs = epochs, batch_size=32)
 
     # Create a folder for the model if it does not already exist.
     os.makedirs(model_folder, exist_ok=True)
