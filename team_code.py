@@ -113,12 +113,6 @@ def load_model(model_folder):
 # Run your trained model. This function is *required*. You should edit this function to add your code, but do *not* change the
 # arguments of this function.
 def run_model(record, model, verbose):
-    # Load the model.
-    model = model['model']
-
-    # Extract the features.
-    age, sex, source, signal_mean, signal_std = extract_features(record)
-    features = np.concatenate((age, sex, signal_mean, signal_std)).reshape(1, -1)
 
     probabilities = model.predict(features_all, verbose=1)  # Salida (10000, 1)
 
