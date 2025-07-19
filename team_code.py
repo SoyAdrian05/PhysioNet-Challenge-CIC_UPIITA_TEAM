@@ -1,0 +1,102 @@
+#!/usr/bin/env python
+
+# Edit this script to add your team's code. Some functions are *required*, but you can edit most parts of the required functions,
+# change or remove non-required functions, and add your own functions.
+
+################################################################################
+#
+# Optional libraries, functions, and variables. You can change or remove them.
+#
+################################################################################
+
+import joblib
+import numpy as np
+import os
+from sklearn.ensemble import RandomForestClassifier, RandomForestRegressor
+import sys
+from CNN1D import *
+from helper_code import *
+import tensorflow as tf
+
+################################################################################
+#
+# Required functions. Edit these functions to add your code, but do not change the arguments for the functions.
+#
+################################################################################
+
+# Train your models. This function is *required*. You should edit this function to add your code, but do *not* change the arguments
+# of this function. If you do not train one of the models, then you can return None for the model.
+
+# Train your model.
+def train_model(data_folder, model_folder, verbose):
+    # Find the data files.
+    if verbose:
+        print('Finding the Challenge data...')
+
+    records = find_records(data_folder)
+    num_records = len(records)
+
+    if num_records == 0:
+        raise FileNotFoundError('No data were provided.')
+
+    # Extract the features and labels from the data.
+    if verbose:
+        print('Extracting features and labels from the data...')
+    
+    model = create_cnn_model(x_train)
+    
+    model.compile(optimizer='adam',
+                  loss='categorical_crossentropy',
+                  metrics=['accuracy'])
+    y_train_onehot = tf.keras.utils.to_categorical(y_train, num_classes=2)
+    y_val_onehot = tf.keras.utils.to_categorical(y_val, num_classes=2)
+
+    epochs = 100
+
+    cnn_model_history = model.fit(x_train_split, y_train_onehot, epochs = epochs, batch_size=32, validation_data=(x_val_split, y_val_onehot))
+
+    # Create a folder for the model if it does not already exist.
+    os.makedirs(model_folder, exist_ok=True)
+
+    # Save the model.
+    save_model(model_folder, model)
+
+    if verbose:
+        print('Done.')
+        print()
+
+# Load your trained models. This function is *required*. You should edit this function to add your code, but do *not* change the
+# arguments of this function. If you do not train one of the models, then you can return None for the model.
+def load_model(model_folder):
+    filename = os.path.join(model_folder, 'model.keras')
+    model = tf.keras.models.load_model(filename)
+    return model
+
+# Run your trained model. This function is *required*. You should edit this function to add your code, but do *not* change the
+# arguments of this function.
+def run_model(record, model, verbose):
+    # Load the model.
+    model = model['model']
+
+    # Extract the features.
+    age, sex, source, signal_mean, signal_std = extract_features(record)
+    features = np.concatenate((age, sex, signal_mean, signal_std)).reshape(1, -1)
+
+    probabilities = model.predict(features_all, verbose=1)  # Salida (10000, 1)
+
+    binary_outputs = (probabilities >= 0.5).astype(int)
+
+    return binary_output, probability_output
+
+################################################################################
+#
+# Optional functions. You can change or remove these functions and/or add new functions.
+#
+################################################################################
+
+
+# Save your trained model.
+def save_model(model_folder, model):
+    os.makedirs(model_folder, exist_ok=True)
+    filename = os.path.join(model_folder, 'model.keras')
+    model.save(filename)   
