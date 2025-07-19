@@ -113,8 +113,52 @@ def load_model(model_folder):
 # Run your trained model. This function is *required*. You should edit this function to add your code, but do *not* change the
 # arguments of this function.
 def run_model(record, model, verbose):
+    if verbose:
+           print('Finding the Challenge data...')
+    
+       records = find_records(data_folder)
+       num_records = len(records)
+    
+       if num_records == 0:
+           raise FileNotFoundError('No data were provided.')
+    
+       # Extract the signals and labels from the data.
+       if verbose:
+           print('Extracting signals and labels from the data...')
+    
+       # Iterate over the records to extract the signals and labels.
+       all_signals = list()
+    
+       
+       for i in range(num_records):
+           if verbose:
+               width = len(str(num_records))
+               print(f'- {i+1:>{width}}/{num_records}: {records[i]}...')
+    
+           record = os.path.join(data_folder, records[i])
+           
+           # Cargar las señales directamente
+           signal, fields = load_signals(record)
+    
+           
+           # Reordenar los canales para consistencia
+           channels = fields['sig_name']
+           reference_channels = ['I', 'II', 'III', 'AVR', 'AVL', 'AVF', 'V1', 'V2', 'V3', 'V4', 'V5', 'V6']
+           signal = reorder_signal(signal, channels, reference_channels)
+           all_signals.append(signal)
+    
+       
+       # Crear tensor de señales con dimensiones uniformes
+       signal_tensor, padded_length = create_signal_tensor(all_signals, signal_info, verbose)
+    
+       # Train the models on the signals.
+       if verbose:
+           print('Training the model on the signal data...')
+           print(f'Number of signals: {len(all_signals)}')
+           print(f'Signal tensor shape: {signal_tensor.shape}')
+           print(f'Padded length: {padded_length}')
 
-    probabilities = model.predict(features_all, verbose=1)  # Salida (10000, 1)
+    probabilities = model.predict(signal_tensor, verbose=1)  # Salida (10000, 1)
 
     binary_outputs = (probabilities >= 0.5).astype(int)
 
