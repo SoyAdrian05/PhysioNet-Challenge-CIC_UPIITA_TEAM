@@ -39,7 +39,7 @@ def create_cnn_model(input_data):
     flattened = layers.Flatten()(merged)
     
     x = layers.Dense(64, activation='relu')(flattened)
-    outputs = layers.Dense(2, activation='softmax')(x)
+    outputs = layers.Dense(1, activation='sigmoid')(x)
     
     model = keras.Model(inputs=input_layers, outputs=outputs)
     return model
