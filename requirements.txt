@@ -40,7 +40,6 @@ PyQt5==5.15.10
 PyQtWebEngine==5.15.6
 pytz==2025.2
 PyWavelets==1.8.0
-pywin32==308
 scikit-learn==1.6.1
 scipy==1.15.2
 soundfile==0.13.1
