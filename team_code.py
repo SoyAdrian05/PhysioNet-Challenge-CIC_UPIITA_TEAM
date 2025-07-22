@@ -128,6 +128,8 @@ def train_model(data_folder, model_folder, verbose):
     model.compile(optimizer='adam',
                   loss='categorical_crossentropy',
                   metrics=['accuracy'])
+
+    y_train = labels
     y_train_onehot = tf.keras.utils.to_categorical(y_train, num_classes=2)
     
 
