@@ -23,8 +23,8 @@ def input_layers_cnn(input_shape):
     return input_entry, x
 
 def create_cnn_model(input_data):
-    red_paralela = input_data.shape[1]
-    data = input_data.shape[2]  
+    red_paralela = input_data.shape[2]
+    data = input_data.shape[1]  
     
     input_layers = [] 
     branch_outputs = []  
