@@ -26,7 +26,49 @@ import tensorflow as tf
 
 # Train your models. This function is *required*. You should edit this function to add your code, but do *not* change the arguments
 # of this function. If you do not train one of the models, then you can return None for the model.
-
+# Create the tensor
+def create_signal_tensor(signals, signal_info, verbose):
+    if not signals:
+        return np.array([]), 0
+    
+    # Obtener estadísticas de las longitudes
+    lengths = [signal.shape[0] for signal in signals]
+    max_length = max(lengths)
+    min_length = min(lengths)
+    avg_length = np.mean(lengths)
+    
+    
+    # Decidir la longitud objetivo (puedes ajustar esta estrategia)
+    # Opción 1: Usar la longitud máxima (más información, pero más memoria)
+    target_length = max_length
+    
+    # Opción 2: Usar un percentil alto (balancear información vs memoria)
+    # target_length = int(np.percentile(lengths, 95))
+    
+    # Opción 3: Usar longitud fija estándar para ECG (ej: 5000 muestras para 10 segundos a 500Hz)
+    # target_length = 5000
+    
+    n_samples = len(signals)
+    n_channels = 12  # Siempre 12 canales ECG
+    
+    # Crear tensor vacío
+    tensor = np.zeros((n_samples, target_length, n_channels), dtype=np.float32)
+    
+    # Llenar el tensor
+    for i, signal in enumerate(signals):
+        original_length = signal.shape[0]
+        
+        if original_length >= target_length:
+            # Truncar si es más larga
+            tensor[i, :, :] = signal[:target_length, :]
+        else:
+            # Padding si es más corta
+            tensor[i, :original_length, :] = signal
+    
+    # Reemplazar NaN e infinitos con ceros
+    tensor = np.nan_to_num(tensor, nan=0.0, posinf=0.0, neginf=0.0)
+    
+    return tensor, target_length
 # Train your model.
 def train_model(data_folder, model_folder, verbose):
     # Find the data files.
