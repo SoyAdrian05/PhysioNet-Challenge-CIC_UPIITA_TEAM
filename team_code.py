@@ -115,7 +115,6 @@ def train_model(data_folder, model_folder, verbose):
     
     # Crear tensor de señales con dimensiones uniformes
     signal_tensor, padded_length = create_signal_tensor(all_signals, signal_info, verbose)
-    signal_tensor = [signal_tensor[:, :, i:i+1] for i in range(signal_tensor.shape[2])]
 
 
     # Train the models on the signals.
