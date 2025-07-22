@@ -123,17 +123,17 @@ def train_model(data_folder, model_folder, verbose):
         print(f'Signal tensor shape: {signal_tensor.shape}')
         print(f'Padded length: {padded_length}')
     
-    model = create_cnn_model(x_train)
+    model = create_cnn_model(signal_tensor)
     
     model.compile(optimizer='adam',
                   loss='categorical_crossentropy',
                   metrics=['accuracy'])
     y_train_onehot = tf.keras.utils.to_categorical(y_train, num_classes=2)
-    y_val_onehot = tf.keras.utils.to_categorical(y_val, num_classes=2)
+    
 
     epochs = 100
 
-    cnn_model_history = model.fit(signal_tensor, labels, epochs = epochs, batch_size=32)
+    cnn_model_history = model.fit(signal_tensor, y_train_onehot, epochs = epochs, batch_size=32)
 
     # Create a folder for the model if it does not already exist.
     os.makedirs(model_folder, exist_ok=True)
