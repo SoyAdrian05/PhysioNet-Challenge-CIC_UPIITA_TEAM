@@ -11,8 +11,7 @@ from tensorflow.keras.utils import plot_model
 from tensorflow import keras
 
 def input_layers_cnn(input_shape):
-
-    input_entry = keras.Input(shape=(input_shape, 1))
+    input_entry = keras.Input(shape=(input_shape, 1))  # (4096, 1)
 
     x = layers.Conv1D(filters=32, kernel_size=3, activation='relu', padding='same')(input_entry)
     x = layers.MaxPooling1D(pool_size=2)(x)
@@ -23,24 +22,23 @@ def input_layers_cnn(input_shape):
     return input_entry, x
 
 def create_cnn_model(input_data):
-    red_paralela = input_data.shape[2]
-    data = input_data.shape[1]  
-    
-    input_layers = [] 
-    branch_outputs = []  
-    
+    red_paralela = input_data.shape[2]  # 12
+    data = input_data.shape[1]          # 4096
+
+    input_layers = []
+    branch_outputs = []
+
     for i in range(red_paralela):
+        # Extrae el canal i
         input_layer, output = input_layers_cnn(data)
         input_layers.append(input_layer)
         branch_outputs.append(output)
-    
+
     merged = layers.Concatenate()(branch_outputs)
-    
-    flattened = layers.Flatten()(merged)
-    
-    x = layers.Dense(64, activation='relu')(flattened)
+    x = layers.Flatten()(merged)
+    x = layers.Dense(64, activation='relu')(x)
     outputs = layers.Dense(1, activation='sigmoid')(x)
-    
+
     model = keras.Model(inputs=input_layers, outputs=outputs)
     return model
     
