@@ -144,7 +144,7 @@ def train_model(data_folder, model_folder, verbose):
     print("y: ", y.shape)
 
 
-    epochs = 1
+    epochs = 100
     
 
     cnn_model_history = model.fit(signal_list, y, epochs = epochs, batch_size=32)
@@ -178,18 +178,56 @@ def run_model(data_folder, model, verbose):
     
     signal, fields = load_signals(data_folder)
     
-    
     signal_tensor, padded_length = create_signal_tensor([signal], signal_info, verbose, target_length = 4096)
+    
+    
+    if len(signal_tensor.shape) == 2:  # Si tiene forma [4096, 12]
+        signal_tensor = signal_tensor[np.newaxis, :, :]  # Agregar dimensión batch -> [1, 4096, 12]
+        if verbose:
+            print(f'Tensor shape corrected from 2D to 3D: {signal_tensor.shape}')
+    elif len(signal_tensor.shape) == 3 and signal_tensor.shape[0] != 1:
+        
+        signal_tensor = signal_tensor[:1, :, :]
+        if verbose:
+            print(f'Tensor batch size adjusted to 1: {signal_tensor.shape}')
+    
+    
+    if signal_tensor.shape[1] != 4096:
+        if verbose:
+            print(f'Warning: Signal length is {signal_tensor.shape[1]}, expected 4096')
+        
+        if signal_tensor.shape[1] < 4096:
+            
+            padding_needed = 4096 - signal_tensor.shape[1]
+            padding = np.zeros((signal_tensor.shape[0], padding_needed, signal_tensor.shape[2]))
+            signal_tensor = np.concatenate([signal_tensor, padding], axis=1)
+            if verbose:
+                print(f'Padded signal to shape: {signal_tensor.shape}')
+        else:
+           
+            signal_tensor = signal_tensor[:, :4096, :]
+            if verbose:
+                print(f'Truncated signal to shape: {signal_tensor.shape}')
+    
     if verbose:
         print('Training the model on the signal data...')
         print(f'Signal tensor shape: {signal_tensor.shape}')
         print(f'Padded length: {padded_length}')
         
-    signal_list = [signal_tensor[:, :, i:i+1] for i in range(signal_tensor.shape[2])]
+    
+    signal_list = []
+    for i in range(signal_tensor.shape[2]):  # Para cada canal (12 canales)
+        # Extraer el canal i y mantener las dimensiones correctas
+        channel_data = signal_tensor[:, :, i:i+1]  # Forma: (1, 4096, 1)
+        signal_list.append(channel_data)
+    
+    if verbose:
+        print(f'Signal list length: {len(signal_list)}')
+        print(f'Each signal shape: {signal_list[0].shape}')
+    
     probability_output = model.predict(signal_list, verbose=1)  # Salida (10000, 1)
     
     binary_outputs = (probability_output >= 0.5).astype(int)
-
     return binary_outputs, probability_output
 
 ################################################################################
