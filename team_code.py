@@ -37,8 +37,6 @@ def create_signal_tensor(signals, signal_info, verbose, target_length):
     min_length = min(lengths)
     avg_length = np.mean(lengths)
     
-    
-    # Decidir la longitud objetivo (puedes ajustar esta estrategia)
     # Opción 1: Usar la longitud máxima (más información, pero más memoria)
     target_length = max_length
     
@@ -53,13 +51,11 @@ def create_signal_tensor(signals, signal_info, verbose, target_length):
     
     # Crear tensor vacío
     tensor = np.zeros((n_samples, target_length, n_channels), dtype=np.float32)
-    
-    # Llenar el tensor
+
     for i, signal in enumerate(signals):
         original_length = signal.shape[0]
         
         if original_length >= target_length:
-            # Truncar si es más larga
             tensor[i, :, :] = signal[:target_length, :]
         else:
             # Padding si es más corta
@@ -174,7 +170,7 @@ def run_model(data_folder, model, verbose):
         print('Finding the Challenge data...')
     
     # Iterate over the records to extract the signals and labels.
-    signal_info = list()  # Para guardar información adicional de cada señal
+    signal_info = list()  
     
     signal, fields = load_signals(data_folder)
     
