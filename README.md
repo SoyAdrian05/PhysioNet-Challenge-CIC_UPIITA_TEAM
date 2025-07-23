@@ -62,11 +62,6 @@ If you have trouble running your code, then please try the follow steps to run t
         root@[...]:/challenge# exit
         Exit
 
-Then, you can run the file `run_code.py` with the following command to train the model and evaluate the efficiency with the metrics: 
-```
-python run_code.py
-```
-
 ## Load Data 
 This project exclusively uses the SAMI-TROP database. In order to run the program correctly, this database needs to be loaded. Here's an example of how data is loaded into your code:
 ```
