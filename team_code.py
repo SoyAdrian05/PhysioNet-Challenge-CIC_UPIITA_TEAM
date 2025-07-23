@@ -74,6 +74,8 @@ def train_model(data_folder, model_folder, verbose):
     # Find the data files.
     if verbose:
         print('Finding the Challenge data...')
+        
+    
 
     records = find_records(data_folder)
     num_records = len(records)
@@ -123,20 +125,29 @@ def train_model(data_folder, model_folder, verbose):
         print(f'Number of signals: {len(all_signals)}')
         print(f'Signal tensor shape: {signal_tensor.shape}')
         print(f'Padded length: {padded_length}')
+        
+    signal_list = [signal_tensor[:, :, i:i+1] for i in range(signal_tensor.shape[2])]
     
     model = create_cnn_model(signal_tensor)
     
     model.compile(optimizer='adam',
-                  loss='categorical_crossentropy',
+                  loss='binary_crossentropy',
                   metrics=['accuracy'])
 
     y_train = labels
     y_train_onehot = tf.keras.utils.to_categorical(y_train, num_classes=2)
+    y = np.argmax(y_train_onehot, axis=1) 
+    y = y.reshape(-1)
+    
+    print("Y_train: ", y_train.shape)
+    print("y_train_onehot: ", y_train_onehot.shape)
+    print("y: ", y.shape)
+
+
+    epochs = 1
     
 
-    epochs = 100
-
-    cnn_model_history = model.fit(signal_tensor, y_train_onehot, epochs = epochs, batch_size=32)
+    cnn_model_history = model.fit(signal_list, y, epochs = epochs, batch_size=32)
 
     # Create a folder for the model if it does not already exist.
     os.makedirs(model_folder, exist_ok=True)
@@ -150,16 +161,17 @@ def train_model(data_folder, model_folder, verbose):
 
 # Load your trained models. This function is *required*. You should edit this function to add your code, but do *not* change the
 # arguments of this function. If you do not train one of the models, then you can return None for the model.
-def load_model(model_folder):
+def load_model(model_folder, verbose):
     filename = os.path.join(model_folder, 'model.keras')
     model = tf.keras.models.load_model(filename)
     return model
 
 # Run your trained model. This function is *required*. You should edit this function to add your code, but do *not* change the
 # arguments of this function.
-def run_model(record, model, verbose):
+def run_model(data_folder, model, verbose):
     if verbose:
         print('Finding the Challenge data...')
+
     records = find_records(data_folder)
     num_records = len(records)
     
@@ -172,7 +184,9 @@ def run_model(record, model, verbose):
     
     # Iterate over the records to extract the signals and labels.
     all_signals = list()
-     
+    labels = list()
+    signal_lengths = list()  # Para trackear las longitudes originales
+    signal_info = list()  # Para guardar información adicional de cada señal
         
     for i in range(num_records):
         if verbose:
@@ -201,11 +215,13 @@ def run_model(record, model, verbose):
         print(f'Number of signals: {len(all_signals)}')
         print(f'Signal tensor shape: {signal_tensor.shape}')
         print(f'Padded length: {padded_length}')
-    probabilities = model.predict(signal_tensor, verbose=1)  # Salida (10000, 1)
+        
+    signal_list = [signal_tensor[:, :, i:i+1] for i in range(signal_tensor.shape[2])]
+    probability_output = model.predict(signal_list, verbose=1)  # Salida (10000, 1)
     
-    binary_outputs = (probabilities >= 0.5).astype(int)
+    binary_outputs = (probability_outputx >= 0.5).astype(int)
 
-    return binary_output, probability_output
+    return binary_outputs, probability_output
 
 ################################################################################
 #

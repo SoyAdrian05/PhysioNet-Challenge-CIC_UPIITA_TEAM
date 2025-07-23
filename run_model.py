@@ -61,7 +61,7 @@ def run(args):
 
         # Allow or disallow the model to fail on parts of the data; this can be helpful for debugging.
         try:
-            binary_output, probability_output = run_model(os.path.join(args.data_folder, record), model, args.verbose) ### Teams: Implement this function!!!
+            binary_output, probability_output = run_model(args.data_folder, model, args.verbose) ### Teams: Implement this function!!!
         except:
             if args.allow_failures:
                 if args.verbose:
