@@ -10,16 +10,57 @@ In this first installment, a proposal is presented that includes the preprocessi
 - run_code.py: Compile all code and calculate model performance metrics.
 - requirements.txt: Contains all the necessary dependencies to run the project.
 
-## How do I run these scripts?
+## How do I run these scripts in Docker?
 
-First, you can install the dependencies for these scripts by creating a virtual environment and running the following command
-```
-conda create --name <my-env> 
-```
+Docker and similar platforms allow you to containerize and package your code with specific dependencies so that your code can be reliably run in other computational environments.
 
-```
-pip install -r requirements.txt
-```
+To increase the likelihood that we can run your code, please [install](https://docs.docker.com/get-docker/) Docker, build a Docker image from your code, and run it on the training data. To quickly check your code for bugs, you may want to run it on a small subset of the training data, such as 1000 records.
+
+If you have trouble running your code, then please try the follow steps to run the example code.
+
+1. Create a folder `example` in your home directory with several subfolders.
+
+        user@computer:~$ cd ~/
+        user@computer:~$ mkdir example
+        user@computer:~$ cd example
+        user@computer:~/example$ mkdir training_data holdout_data model holdout_outputs
+
+2. Download the training data from the [Challenge website](https://physionetchallenges.org/2025/#data). Put some of the training data in `training_data` and `holdout_data`. You can use some of the training data to check your code (and you should perform cross-validation on the training data to evaluate your algorithm).
+
+3. Download or clone this repository in your terminal.
+
+        user@computer:~/example$ git clone https://github.com/physionetchallenges/python-example-2025.git
+
+4. Build a Docker image and run the example code in your terminal.
+
+        user@computer:~/example$ ls
+        holdout_data  holdout_outputs  model  python-example-2025  training_data
+
+        user@computer:~/example$ cd python-example-2025/
+
+        user@computer:~/example/python-example-2025$ docker build -t image .
+
+        Sending build context to Docker daemon  [...]kB
+        [...]
+        Successfully tagged image:latest
+
+        user@computer:~/example/python-example-2025$ docker run -it -v ~/example/model:/challenge/model -v ~/example/holdout_data:/challenge/holdout_data -v ~/example/holdout_outputs:/challenge/holdout_outputs -v ~/example/training_data:/challenge/training_data image bash
+
+        root@[...]:/challenge# ls
+            Dockerfile             holdout_outputs        run_model.py
+            evaluate_model.py      LICENSE                training_data
+            helper_code.py         README.md      
+            holdout_data           requirements.txt
+
+        root@[...]:/challenge# python train_model.py -d training_data -m model -v
+
+        root@[...]:/challenge# python run_model.py -d holdout_data -m model -o holdout_outputs -v
+
+        root@[...]:/challenge# python evaluate_model.py -d holdout_data -o holdout_outputs
+        [...]
+
+        root@[...]:/challenge# exit
+        Exit
 
 Then, you can run the file `run_code.py` with the following command to train the model and evaluate the efficiency with the metrics: 
 ```
