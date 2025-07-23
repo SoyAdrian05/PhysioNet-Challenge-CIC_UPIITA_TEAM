@@ -31,25 +31,16 @@ def create_signal_tensor(signals, signal_info, verbose, target_length):
     if not signals:
         return np.array([]), 0
     
-    # Obtener estadísticas de las longitudes
     lengths = [signal.shape[0] for signal in signals]
     max_length = max(lengths)
     min_length = min(lengths)
     avg_length = np.mean(lengths)
-    
-    # Opción 1: Usar la longitud máxima (más información, pero más memoria)
+
     target_length = max_length
     
-    # Opción 2: Usar un percentil alto (balancear información vs memoria)
-    # target_length = int(np.percentile(lengths, 95))
-    
-    # Opción 3: Usar longitud fija estándar para ECG (ej: 5000 muestras para 10 segundos a 500Hz)
-    # target_length = 5000
-    
     n_samples = len(signals)
-    n_channels = 12  # Siempre 12 canales ECG
-    
-    # Crear tensor vacío
+    n_channels = 12 
+
     tensor = np.zeros((n_samples, target_length, n_channels), dtype=np.float32)
 
     for i, signal in enumerate(signals):
@@ -58,10 +49,10 @@ def create_signal_tensor(signals, signal_info, verbose, target_length):
         if original_length >= target_length:
             tensor[i, :, :] = signal[:target_length, :]
         else:
-            # Padding si es más corta
+
             tensor[i, :original_length, :] = signal
     
-    # Reemplazar NaN e infinitos con ceros
+
     tensor = np.nan_to_num(tensor, nan=0.0, posinf=0.0, neginf=0.0)
     
     return tensor, target_length
@@ -86,8 +77,8 @@ def train_model(data_folder, model_folder, verbose):
     # Iterate over the records to extract the signals and labels.
     all_signals = list()
     labels = list()
-    signal_lengths = list()  # Para trackear las longitudes originales
-    signal_info = list()  # Para guardar información adicional de cada señal
+    signal_lengths = list()  
+    signal_info = list()  
     
     for i in range(num_records):
         if verbose:
@@ -96,22 +87,22 @@ def train_model(data_folder, model_folder, verbose):
 
         record = os.path.join(data_folder, records[i])
         
-        # Cargar las señales directamente
+
         signal, fields = load_signals(record)
         header = load_header(record)
         source = get_source(header)
         label = load_label(record)
         
-        # Reordenar los canales para consistencia
+
         channels = fields['sig_name']
         reference_channels = ['I', 'II', 'III', 'AVR', 'AVL', 'AVF', 'V1', 'V2', 'V3', 'V4', 'V5', 'V6']
         signal = reorder_signal(signal, channels, reference_channels)
         labels.append(label)
         all_signals.append(signal)
-    # Convertir señales a tensor con padding/truncating
+
     labels = np.asarray(labels, dtype=bool)
     
-    # Crear tensor de señales con dimensiones uniformes
+  
     signal_tensor, padded_length = create_signal_tensor(all_signals, signal_info, verbose, target_length = False)
 
 
@@ -212,16 +203,16 @@ def run_model(data_folder, model, verbose):
         
     
     signal_list = []
-    for i in range(signal_tensor.shape[2]):  # Para cada canal (12 canales)
-        # Extraer el canal i y mantener las dimensiones correctas
-        channel_data = signal_tensor[:, :, i:i+1]  # Forma: (1, 4096, 1)
+    for i in range(signal_tensor.shape[2]):  
+        
+        channel_data = signal_tensor[:, :, i:i+1] 
         signal_list.append(channel_data)
     
     if verbose:
         print(f'Signal list length: {len(signal_list)}')
         print(f'Each signal shape: {signal_list[0].shape}')
     
-    probability_output = model.predict(signal_list, verbose=1)  # Salida (10000, 1)
+    probability_output = model.predict(signal_list, verbose=1)  
     
     binary_outputs = (probability_output >= 0.5).astype(int)
     return binary_outputs, probability_output
