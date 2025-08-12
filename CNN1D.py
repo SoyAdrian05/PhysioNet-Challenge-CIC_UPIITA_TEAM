@@ -9,6 +9,8 @@ import tensorflow as tf
 from tensorflow.keras import layers, models
 from tensorflow.keras.utils import plot_model
 from tensorflow import keras
+print("Version de tensorflow: {}".format(tf.__version__))
+print("GPU: {}".format(tf.test.gpu_device_name()))
 
 def input_layers_cnn(input_length):
     input_entry = keras.Input(shape=(input_length, 1))  # Cada rama procesa (4096, 1)
@@ -41,3 +43,4 @@ def create_cnn_model(input_data):
 
     model = keras.Model(inputs=input_layers, outputs=outputs)
     return model
+
