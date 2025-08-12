@@ -132,7 +132,11 @@ def train_model(data_folder, model_folder, verbose):
 
 
     epochs = 100
-    
+    print("Version de tensorflow: {}".format(tf.__version__))
+    print("GPU: {}".format(tf.test.gpu_device_name()))
+
+    physical_devices = tf.config.list_physical_devices('GPU')
+    tf.config.experimental.set_memory_growth(physical_devices[0], True)
 
     cnn_model_history = model.fit(signal_list, y, epochs = epochs, batch_size=10)
 
