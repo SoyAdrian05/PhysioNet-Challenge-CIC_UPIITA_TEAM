@@ -47,8 +47,13 @@ This code uses a GPU to train the architecture. It's recommended that you have C
         [...]
         Successfully tagged image:latest
 
+If you want to run it without GPU, use the following line: 
+
         user@computer:~/example/python-example-2025$ docker run -it -v ~/example/model:/challenge/model -v ~/example/holdout_data:/challenge/holdout_data -v ~/example/holdout_outputs:/challenge/holdout_outputs -v ~/example/training_data:/challenge/training_data image bash
 
+If you want ro run it with GPU, use the following line:
+
+        user@computer:~/example/python-example-2025$ docker run --gpus all -it -v ~/example/model:/challenge/model -v ~/example/holdout_data:/challenge/holdout_data -v ~/example/holdout_outputs:/challenge/holdout_outputs -v ~/example/training_data:/challenge/training_data image bash
         root@[...]:/challenge# ls
             Dockerfile             holdout_outputs        run_model.py
             evaluate_model.py      LICENSE                training_data
