@@ -18,6 +18,8 @@ To increase the likelihood that we can run your code, please [install](https://d
 
 If you have trouble running your code, then please try the follow steps to run the example code.
 
+This code uses a GPU to train the architecture. It's recommended that you have CUDA and CUDNN installed for everything to work properly.
+
 1. Create a folder `example` in your home directory with several subfolders.
 
         user@computer:~$ cd ~/
@@ -30,8 +32,9 @@ If you have trouble running your code, then please try the follow steps to run t
 3. Download or clone this repository in your terminal.
 
         user@computer:~/example$ git clone https://github.com/physionetchallenges/python-example-2025.git
+   
 
-4. Build a Docker image and run the example code in your terminal.
+5. Build a Docker image and run the example code in your terminal.
 
         user@computer:~/example$ ls
         holdout_data  holdout_outputs  model  python-example-2025  training_data
@@ -52,11 +55,11 @@ If you have trouble running your code, then please try the follow steps to run t
             helper_code.py         README.md      
             holdout_data           requirements.txt
 
-        root@[...]:/challenge# python train_model.py -d training_data -m model -v
+        root@[...]:/challenge# python3 train_model.py -d training_data -m model -v
 
-        root@[...]:/challenge# python run_model.py -d holdout_data -m model -o holdout_outputs -v
+        root@[...]:/challenge# python3 run_model.py -d holdout_data -m model -o holdout_outputs -v
 
-        root@[...]:/challenge# python evaluate_model.py -d holdout_data -o holdout_outputs
+        root@[...]:/challenge# python3 evaluate_model.py -d holdout_data -o holdout_outputs
         [...]
 
         root@[...]:/challenge# exit
