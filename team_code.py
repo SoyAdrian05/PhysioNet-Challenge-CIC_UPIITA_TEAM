@@ -17,6 +17,14 @@ import sys
 from CNN1D import *
 from helper_code import *
 import tensorflow as tf
+print("Version de tensorflow: {}".format(tf.__version__))
+print("GPU: {}".format(tf.test.gpu_device_name()))
+
+physical_devices = tf.config.list_physical_devices('GPU')
+if physical_devices:
+    tf.config.experimental.set_memory_growth(physical_devices[0], True)
+else:
+    print("NO GPU")
 
 ################################################################################
 #
@@ -132,11 +140,6 @@ def train_model(data_folder, model_folder, verbose):
 
 
     epochs = 100
-    print("Version de tensorflow: {}".format(tf.__version__))
-    print("GPU: {}".format(tf.test.gpu_device_name()))
-
-    physical_devices = tf.config.list_physical_devices('GPU')
-    tf.config.experimental.set_memory_growth(physical_devices[0], True)
 
     cnn_model_history = model.fit(signal_list, y, epochs = epochs, batch_size=10)
 
@@ -226,7 +229,6 @@ def run_model(data_folder, model, verbose):
 # Optional functions. You can change or remove these functions and/or add new functions.
 #
 ################################################################################
-
 
 # Save your trained model.
 def save_model(model_folder, model):
