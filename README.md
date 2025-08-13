@@ -54,6 +54,9 @@ If you want to run it without GPU, use the following line:
 If you want ro run it with GPU, use the following line:
 
         user@computer:~/example/python-example-2025$ docker run --gpus all -it -v ~/example/model:/challenge/model -v ~/example/holdout_data:/challenge/holdout_data -v ~/example/holdout_outputs:/challenge/holdout_outputs -v ~/example/training_data:/challenge/training_data image bash
+
+Then
+
         root@[...]:/challenge# ls
             Dockerfile             holdout_outputs        run_model.py
             evaluate_model.py      LICENSE                training_data
