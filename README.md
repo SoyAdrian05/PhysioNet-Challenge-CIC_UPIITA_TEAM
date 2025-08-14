@@ -63,11 +63,11 @@ Then
             helper_code.py         README.md      
             holdout_data           requirements.txt
 
-        root@[...]:/challenge# python3 train_model.py -d training_data -m model -v
+        root@[...]:/challenge# python train_model.py -d training_data -m model -v
 
-        root@[...]:/challenge# python3 run_model.py -d holdout_data -m model -o holdout_outputs -v
+        root@[...]:/challenge# python run_model.py -d holdout_data -m model -o holdout_outputs -v
 
-        root@[...]:/challenge# python3 evaluate_model.py -d holdout_data -o holdout_outputs
+        root@[...]:/challenge# python evaluate_model.py -d holdout_data -o holdout_outputs
         [...]
 
         root@[...]:/challenge# exit
