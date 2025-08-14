@@ -1,8 +1,7 @@
 FROM nvidia/cuda:11.2.2-cudnn8-runtime-ubuntu20.04
 
-RUN apt-get update && apt-get install -y --no-install-recommends \
-    python3 python3-pip python3-venv python3-dev git \
-    && rm -rf /var/lib/apt/lists/*
+RUN apt-get update && apt-get install -y python3 python3-pip python3-venv python3-dev git \
+    && ln -s /usr/bin/python3 /usr/bin/python \
     
 ## DO NOT EDIT these 3 lines.
 RUN mkdir /challenge
