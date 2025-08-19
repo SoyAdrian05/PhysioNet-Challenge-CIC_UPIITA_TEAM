@@ -17,6 +17,7 @@ import sys
 from CNN1D import *
 from helper_code import *
 import tensorflow as tf
+import psutil
 print("Version de tensorflow: {}".format(tf.__version__))
 print("GPU: {}".format(tf.test.gpu_device_name()))
 
@@ -25,7 +26,6 @@ if physical_devices:
     tf.config.experimental.set_memory_growth(physical_devices[0], True)
 else:
     print("NO GPU")
-
 ################################################################################
 #
 # Required functions. Edit these functions to add your code, but do not change the arguments for the functions.
@@ -35,16 +35,18 @@ else:
 # Train your models. This function is *required*. You should edit this function to add your code, but do *not* change the arguments
 # of this function. If you do not train one of the models, then you can return None for the model.
 # Create the tensor
+
+def log_memory(step=""):
+    mem = psutil.Process(os.getpid()).memory_info().rss / (1024*1024)
+    print(f"[MEMORY][{step}] {mem:.2f} MB")
+
 def create_signal_tensor(signals, signal_info, verbose, target_length):
     if not signals:
         return np.array([]), 0
     
     lengths = [signal.shape[0] for signal in signals]
-    max_length = max(lengths)
-    min_length = min(lengths)
-    avg_length = np.mean(lengths)
 
-    target_length = max_length
+    target_length = int(np.percentile(lengths, 95))
     
     n_samples = len(signals)
     n_channels = 12 
@@ -64,6 +66,25 @@ def create_signal_tensor(signals, signal_info, verbose, target_length):
     tensor = np.nan_to_num(tensor, nan=0.0, posinf=0.0, neginf=0.0)
     
     return tensor, target_length
+
+##Crea un dataset para que consuma menos memoria
+def build_dataset(signal_tensor, labels, batch_size=16, shuffle=True):
+    def gen():
+        for i in range(len(labels)):
+            yield tuple(signal_tensor[i, :, j:j+1] for j in range(signal_tensor.shape[2])), labels[i]
+
+    dataset = tf.data.Dataset.from_generator(
+        gen,
+        output_signature=(
+            tuple(tf.TensorSpec(shape=(signal_tensor.shape[1], 1), dtype=tf.float32) for _ in range(signal_tensor.shape[2])),
+            tf.TensorSpec(shape=(), dtype=tf.int32)
+        )
+    )
+    if shuffle:
+        dataset = dataset.shuffle(buffer_size=len(labels))
+    dataset = dataset.batch(batch_size).prefetch(tf.data.AUTOTUNE)
+    return dataset
+
 # Train your model.
 def train_model(data_folder, model_folder, verbose):
     # Find the data files.
@@ -85,7 +106,6 @@ def train_model(data_folder, model_folder, verbose):
     # Iterate over the records to extract the signals and labels.
     all_signals = list()
     labels = list()
-    signal_lengths = list()  
     signal_info = list()  
     
     for i in range(num_records):
@@ -94,7 +114,6 @@ def train_model(data_folder, model_folder, verbose):
             print(f'- {i+1:>{width}}/{num_records}: {records[i]}...')
 
         record = os.path.join(data_folder, records[i])
-        
 
         signal, fields = load_signals(record)
         header = load_header(record)
@@ -105,11 +124,11 @@ def train_model(data_folder, model_folder, verbose):
         channels = fields['sig_name']
         reference_channels = ['I', 'II', 'III', 'AVR', 'AVL', 'AVF', 'V1', 'V2', 'V3', 'V4', 'V5', 'V6']
         signal = reorder_signal(signal, channels, reference_channels)
+        
         labels.append(label)
         all_signals.append(signal)
 
     labels = np.asarray(labels, dtype=bool)
-    
   
     signal_tensor, padded_length = create_signal_tensor(all_signals, signal_info, verbose, target_length = False)
 
@@ -123,26 +142,29 @@ def train_model(data_folder, model_folder, verbose):
         
     signal_list = [signal_tensor[:, :, i:i+1] for i in range(signal_tensor.shape[2])]
     
+    dataset = build_dataset(signal_tensor, labels, batch_size=10)
     model = create_cnn_model(signal_tensor)
     
     model.compile(optimizer='adam',
                   loss='binary_crossentropy',
                   metrics=['accuracy'])
 
-    y_train = labels
-    y_train_onehot = tf.keras.utils.to_categorical(y_train, num_classes=2)
-    y = np.argmax(y_train_onehot, axis=1) 
-    y = y.reshape(-1)
+    # y_train = labels
+    # y_train_onehot = tf.keras.utils.to_categorical(y_train, num_classes=2)
+    # y = np.argmax(y_train_onehot, axis=1) 
+    # y = y.reshape(-1)
     
-    print("Y_train: ", y_train.shape)
-    print("y_train_onehot: ", y_train_onehot.shape)
-    print("y: ", y.shape)
+    # print("Y_train: ", y_train.shape)
+    # print("y_train_onehot: ", y_train_onehot.shape)
+    # print("y: ", y.shape)
 
 
-    epochs = 100
+    epochs = 50
 
-    cnn_model_history = model.fit(signal_list, y, epochs = epochs, batch_size=10)
+    log_memory("Before training")
+    cnn_model_history = model.fit(dataset, epochs = epochs)
 
+    log_memory("After Training")
     # Create a folder for the model if it does not already exist.
     os.makedirs(model_folder, exist_ok=True)
 
@@ -209,17 +231,13 @@ def run_model(data_folder, model, verbose):
         print(f'Padded length: {padded_length}')
         
     
-    signal_list = []
-    for i in range(signal_tensor.shape[2]):  
-        
-        channel_data = signal_tensor[:, :, i:i+1] 
-        signal_list.append(channel_data)
+    signal_list = [signal_tensor[:, :, i:i+1] for i in range(signal_tensor.shape[2])]
     
     if verbose:
         print(f'Signal list length: {len(signal_list)}')
         print(f'Each signal shape: {signal_list[0].shape}')
     
-    probability_output = model.predict(signal_list, verbose=1)  
+    probability_output = model.predict(signal_list, verbose=1)      
     
     binary_outputs = (probability_output >= 0.5).astype(int)
     return binary_outputs, probability_output
@@ -229,6 +247,7 @@ def run_model(data_folder, model, verbose):
 # Optional functions. You can change or remove these functions and/or add new functions.
 #
 ################################################################################
+
 
 # Save your trained model.
 def save_model(model_folder, model):
