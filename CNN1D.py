@@ -10,13 +10,14 @@ from tensorflow.keras import layers, models
 from tensorflow.keras.utils import plot_model
 from tensorflow import keras
 
+
 def input_layers_cnn(input_length):
     input_entry = keras.Input(shape=(input_length, 1))  # Cada rama procesa (4096, 1)
     
-    x = layers.Conv1D(filters=32, kernel_size=3, activation='relu', padding='same')(input_entry)
+    x = layers.Conv1D(filters=16, kernel_size=5, activation='relu', padding='same')(input_entry)
     x = layers.MaxPooling1D(pool_size=2)(x)
 
-    x = layers.Conv1D(filters=64, kernel_size=3, activation='relu', padding='same')(x)
+    x = layers.Conv1D(filters=32, kernel_size=5, activation='relu', padding='same')(x)
     x = layers.MaxPooling1D(pool_size=2)(x)
 
     return input_entry, x
@@ -35,11 +36,11 @@ def create_cnn_model(input_data):
         branch_outputs.append(output)
 
     merged = layers.Concatenate()(branch_outputs)
-    x = layers.Flatten()(merged)
+    x = layers.GlobalAveragePooling1D()(merged)
+    # x = layers.Flatten()(merged)
     x = layers.Dense(64, activation='relu')(x)
     outputs = layers.Dense(1, activation='sigmoid')(x)
 
     model = keras.Model(inputs=input_layers, outputs=outputs)
     return model
-
 

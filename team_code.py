@@ -9,6 +9,7 @@
 #
 ################################################################################
 
+
 import joblib
 import numpy as np
 import os
@@ -39,7 +40,7 @@ else:
 def log_memory(step=""):
     mem = psutil.Process(os.getpid()).memory_info().rss / (1024*1024)
     print(f"[MEMORY][{step}] {mem:.2f} MB")
-
+    
 def create_signal_tensor(signals, signal_info, verbose, target_length):
     if not signals:
         return np.array([]), 0
@@ -68,7 +69,7 @@ def create_signal_tensor(signals, signal_info, verbose, target_length):
     return tensor, target_length
 
 ##Crea un dataset para que consuma menos memoria
-def build_dataset(signal_tensor, labels, batch_size=16, shuffle=True):
+def build_dataset(signal_tensor, labels, batch_size=8, shuffle=True):
     def gen():
         for i in range(len(labels)):
             yield tuple(signal_tensor[i, :, j:j+1] for j in range(signal_tensor.shape[2])), labels[i]
@@ -129,10 +130,10 @@ def train_model(data_folder, model_folder, verbose):
         all_signals.append(signal)
 
     labels = np.asarray(labels, dtype=bool)
-  
+    
     signal_tensor, padded_length = create_signal_tensor(all_signals, signal_info, verbose, target_length = False)
 
-
+    selected_channels = ['I', 'II', 'III', 'V1', 'V2', 'V3']
     # Train the models on the signals.
     if verbose:
         print('Training the model on the signal data...')
@@ -140,14 +141,18 @@ def train_model(data_folder, model_folder, verbose):
         print(f'Signal tensor shape: {signal_tensor.shape}')
         print(f'Padded length: {padded_length}')
         
-    signal_list = [signal_tensor[:, :, i:i+1] for i in range(signal_tensor.shape[2])]
+    all_channels = ['I', 'II', 'III', 'AVR', 'AVL', 'AVF', 'V1', 'V2', 'V3', 'V4', 'V5', 'V6']
+    selected_indices = [all_channels.index(ch) for ch in selected_channels]
     
-    dataset = build_dataset(signal_tensor, labels, batch_size=10)
+    # Crear lista de señales solo con los canales seleccionados
+    signal_list = [signal_tensor[:, :, i:i+1] for i in selected_indices]
+    
+    dataset = build_dataset(signal_tensor, labels, batch_size=8)
     model = create_cnn_model(signal_tensor)
     
-    model.compile(optimizer='adam',
-                  loss='binary_crossentropy',
-                  metrics=['accuracy'])
+    model.compile(optimizer=tf.keras.optimizers.Adam(learning_rate=1e-4),
+                  loss="binary_crossentropy",
+                  metrics=["accuracy"])
 
     # y_train = labels
     # y_train_onehot = tf.keras.utils.to_categorical(y_train, num_classes=2)
@@ -159,7 +164,7 @@ def train_model(data_folder, model_folder, verbose):
     # print("y: ", y.shape)
 
 
-    epochs = 50
+    epochs = 40
 
     log_memory("Before training")
     cnn_model_history = model.fit(dataset, epochs = epochs)
