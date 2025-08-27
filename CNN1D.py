@@ -44,3 +44,34 @@ def create_cnn_model(input_data):
     model = keras.Model(inputs=input_layers, outputs=outputs)
     return model
 
+def cnn_model2():
+    input1 = layers.Input(shape=(12, 2050), name="input_1")
+    x1 = layers.Conv1D(32, kernel_size=3, activation="relu", padding="same")(input1)
+    x1 = layers.MaxPooling1D(pool_size=2)(x1)
+    x1 = layers.Flatten()(x1)
+
+    # Entrada 2: (12, 1027)
+    input2 = layers.Input(shape=(12, 1027), name="input_2")
+    x2 = layers.Conv1D(32, kernel_size=3, activation="relu", padding="same")(input2)
+    x2 = layers.MaxPooling1D(pool_size=2)(x2)
+    x2 = layers.Flatten()(x2)
+
+    # Entrada 3: (12, 256)
+    input3 = layers.Input(shape=(12, 516), name="input_3")
+    x3 = layers.Conv1D(32, kernel_size=3, activation="relu", padding="same")(input3)
+    x3 = layers.MaxPooling1D(pool_size=2)(x3)
+    x3 = layers.Flatten()(x3)
+
+    # Concatenar las tres ramas
+    concat = layers.Concatenate()([x1, x2, x3])
+
+    # Capas densas finales
+    dense = layers.Dense(128, activation="relu")(concat)
+    output = layers.Dense(1, activation="sigmoid")(dense)  # cambiar a softmax si es multiclase
+
+    # Definir el modelo
+    model = keras.Model(inputs=[input1, input2, input3], outputs=output)
+
+
+    return model
+
