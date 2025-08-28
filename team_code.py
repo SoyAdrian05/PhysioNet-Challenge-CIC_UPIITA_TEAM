@@ -200,7 +200,12 @@ def train_model(data_folder, model_folder, verbose):
         signal, fields = load_signals(record)
         header = load_header(record)
         source = get_source(header)
-        label = load_label(record)
+        try:
+            label = load_label(record)
+        except Exception as e:
+            if verbose:
+                print(f'No label found for {record}, skipping this record. ({e})')
+            continue  # saltar este registro sin etiqueta
         
 
         channels = fields['sig_name']
@@ -329,8 +334,8 @@ def run_model(data_folder, model, verbose):
     # signal_list = [signal_tensor[:, :, i:i+1] for i in range(signal_tensor.shape[2])]
     
     if verbose:
-        print(f'Signal list length: {len(signal_list)}')
-        print(f'Each signal shape: {signal_list[0].shape}')
+        print(f'Signal list length: {len(input_train)}')
+        print(f'Each signal shape: {input_train[0].shape}')
     
     probability_output = model.predict(input_train, verbose=1)      
     
