@@ -130,7 +130,15 @@ def pad_signal_tensor(tensor, target_length=4096):
     
     return padded_tensor
 
-
+def select_chanels(tensor,canales):
+    num_canales = tensor.shape[1]
+    for idx in canales:
+        if idx < 0 or idx >= num_canales:
+            raise ValueError(f"Índice {idx} fuera del rango válido [0, {num_canales-1}]")
+    
+    tensor_final = tensor[:, canales, :]
+    
+    return tensor_final
 
 
 def log_memory(step=""):
@@ -200,12 +208,7 @@ def train_model(data_folder, model_folder, verbose):
         signal, fields = load_signals(record)
         header = load_header(record)
         source = get_source(header)
-        try:
-            label = load_label(record)
-        except Exception as e:
-            if verbose:
-                print(f'No label found for {record}, skipping this record. ({e})')
-            continue  # saltar este registro sin etiqueta
+        label = load_label(record)
         
 
         channels = fields['sig_name']
@@ -219,9 +222,18 @@ def train_model(data_folder, model_folder, verbose):
     
     signal_tensor, padded_length = create_signal_tensor(all_signals, signal_info, verbose, target_length = False)
     print(signal_tensor.shape)
+    canales = [0,4,6,8]
+    
     signal_tensor = pad_signal_tensor(signal_tensor)
     tensor_butter = filtro_señal_3d(signal_tensor)
     detail1,detail2,detail3 = wavelet_signals(tensor_butter)
+    detail1 = select_chanels(detail1,canales)
+    detail2 = select_chanels(detail2,canales)
+    detail3 = select_chanels(detail3,canales)
+    print(detail1.shape)
+    # np.save("./detalle1.npy", detail1)
+    # np.save("./detalle2.npy", detail2)
+    # np.save("./detalle3.npy", detail3)
     input_train = [detail1,detail2,detail3]
 
     selected_channels = ['I', 'II', 'III', 'V1', 'V2', 'V3']
@@ -239,7 +251,7 @@ def train_model(data_folder, model_folder, verbose):
     signal_list = [signal_tensor[:, :, i:i+1] for i in selected_indices]
     
     # dataset = build_dataset(signal_tensor, labels, batch_size=8)
-    model = cnn_model2()
+    model = cnn_model2(detail1)
     
     model.compile(optimizer=tf.keras.optimizers.Adam(learning_rate=1e-4),
                   loss="binary_crossentropy",
@@ -255,7 +267,7 @@ def train_model(data_folder, model_folder, verbose):
     # print("y: ", y.shape)
 
 
-    epochs = 40
+    epochs = 10
 
     log_memory("Before training")
     cnn_model_history = model.fit([detail1,detail2,detail3],labels, epochs = epochs)
@@ -325,17 +337,20 @@ def run_model(data_folder, model, verbose):
         print('Training the model on the signal data...')
         print(f'Signal tensor shape: {signal_tensor.shape}')
         print(f'Padded length: {padded_length}')
-    
+    canales = [0,4,6,8]
     signal_tensor = pad_signal_tensor(signal_tensor)
     signal_tensor_raw = signal_tensor
     tensor_butter = filtro_señal_3d(signal_tensor_raw)
     detail1,detail2,detail3 = wavelet_signals(tensor_butter)
+    detail1 = select_chanels(detail1,canales)
+    detail2 = select_chanels(detail2,canales)
+    detail3 = select_chanels(detail3,canales)
     input_train = [detail1,detail2,detail3]
     # signal_list = [signal_tensor[:, :, i:i+1] for i in range(signal_tensor.shape[2])]
     
     if verbose:
-        print(f'Signal list length: {len(input_train)}')
-        print(f'Each signal shape: {input_train[0].shape}')
+        print(f'Signal list length: {len(signal_list)}')
+        print(f'Each signal shape: {signal_list[0].shape}')
     
     probability_output = model.predict(input_train, verbose=1)      
     
