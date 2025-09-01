@@ -44,20 +44,21 @@ def create_cnn_model(input_data):
     model = keras.Model(inputs=input_layers, outputs=outputs)
     return model
 
-def cnn_model2():
-    input1 = layers.Input(shape=(12, 2050), name="input_1")
+def cnn_model2(tensor):
+    input_lenght = tensor.shape
+    input1 = layers.Input(shape=(input_lenght[1], 2050), name="input_1")
     x1 = layers.Conv1D(32, kernel_size=3, activation="relu", padding="same")(input1)
     x1 = layers.MaxPooling1D(pool_size=2)(x1)
     x1 = layers.Flatten()(x1)
 
     # Entrada 2: (12, 1027)
-    input2 = layers.Input(shape=(12, 1027), name="input_2")
+    input2 = layers.Input(shape=(input_lenght[1], 1027), name="input_2")
     x2 = layers.Conv1D(32, kernel_size=3, activation="relu", padding="same")(input2)
     x2 = layers.MaxPooling1D(pool_size=2)(x2)
     x2 = layers.Flatten()(x2)
 
     # Entrada 3: (12, 256)
-    input3 = layers.Input(shape=(12, 516), name="input_3")
+    input3 = layers.Input(shape=(input_lenght[1], 516), name="input_3")
     x3 = layers.Conv1D(32, kernel_size=3, activation="relu", padding="same")(input3)
     x3 = layers.MaxPooling1D(pool_size=2)(x3)
     x3 = layers.Flatten()(x3)
