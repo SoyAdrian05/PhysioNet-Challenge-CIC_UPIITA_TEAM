@@ -21,6 +21,12 @@ from CNN1D import *
 from helper_code import *
 import tensorflow as tf
 import psutil
+import matplotlib.pyplot as plt
+import os
+from sklearn.utils import class_weight
+from tensorflow.keras.utils import plot_model
+
+
 print("Version de tensorflow: {}".format(tf.__version__))
 print("GPU: {}".format(tf.test.gpu_device_name()))
 
@@ -112,22 +118,23 @@ def apply_wavelet_transform(signal, wavelet='db3', levels=3):
 
 def pad_signal_tensor(tensor, target_length=4096):
     n, m, channels = tensor.shape
-    
+
     if m >= target_length:
         if m > target_length:
-            print(f"")
+            print(f"Señal recortada: {m} -> {target_length}")
+            tensor = tensor[:, :target_length, :]
         return tensor
-    
-    padding_needed = target_length - m
-    
-    if isinstance(tensor, np.ndarray):
-        padding_zeros = np.zeros((n, padding_needed, channels), dtype=tensor.dtype)
-        padded_tensor = np.concatenate([tensor, padding_zeros], axis=1)
-    else:
-        raise TypeError("El tensor debe ser un torch.Tensor o numpy.ndarray")
-    
-    print(f"Padding aplicado: {m} -> {target_length} (añadidos {padding_needed} ceros)")
-    
+
+    padded_tensor = np.zeros((n, target_length, channels), dtype=tensor.dtype)
+
+    original_idx = np.arange(m)
+    new_idx = np.linspace(0, m-1, target_length)
+
+    for i in range(n):
+        for c in range(channels):
+            padded_tensor[i, :, c] = np.interp(new_idx, original_idx, tensor[i, :, c])
+
+    print(f"Padding por interpolación aplicado: {m} -> {target_length}")
     return padded_tensor
 
 def select_chanels(tensor,canales):
@@ -172,105 +179,189 @@ def create_signal_tensor(signals, signal_info, verbose, target_length):
     
     return tensor, target_length
 
-##Crea un dataset para que consuma menos memoria
- 
-
 # Train your model.
 def train_model(data_folder, model_folder, verbose):
-    # Find the data files.
     if verbose:
         print('Finding the Challenge data...')
-        
     
-
     records = find_records(data_folder)
     num_records = len(records)
-
+    
     if num_records == 0:
         raise FileNotFoundError('No data were provided.')
-
-    # Extract the signals and labels from the data.
+    
+    # Crear carpetas temporales si no existen
+    os.makedirs('temp_signals', exist_ok=True)
+    os.makedirs('temp_labels', exist_ok=True)
+    
     if verbose:
         print('Extracting signals and labels from the data...')
-
-    # Iterate over the records to extract the signals and labels.
-    all_signals = list()
-    labels = list()
-    signal_info = list()  
     
-    for i in range(num_records):
+    # Iterar sobre los registros
+    for i, rec_name in enumerate(records):
         if verbose:
             width = len(str(num_records))
-            print(f'- {i+1:>{width}}/{num_records}: {records[i]}...')
-
-        record = os.path.join(data_folder, records[i])
-
-        signal, fields = load_signals(record)
-        header = load_header(record)
-        source = get_source(header)
-        label = load_label(record)
-        
-
+            print(f'- {i+1:>{width}}/{num_records}: {rec_name}...')
+    
+        record_path = os.path.join(data_folder, rec_name)
+    
+        # Cargar señal y metadata
+        signal, fields = load_signals(record_path)
+        header = load_header(record_path)
+        label = load_label(record_path)
+    
         channels = fields['sig_name']
         reference_channels = ['I', 'II', 'III', 'AVR', 'AVL', 'AVF', 'V1', 'V2', 'V3', 'V4', 'V5', 'V6']
         signal = reorder_signal(signal, channels, reference_channels)
-        
-        labels.append(label)
-        all_signals.append(signal)
-
-    labels = np.asarray(labels, dtype=bool)
     
-    signal_tensor, padded_length = create_signal_tensor(all_signals, signal_info, verbose, target_length = False)
-    print(signal_tensor.shape)
-    canales = [0,4,6,8]
+        # Reducir tamaño de datos y convertir a float32 para ahorrar RAM
+        signal = signal.astype(np.float32)
     
-    signal_tensor = pad_signal_tensor(signal_tensor)
-    tensor_butter = filtro_señal_3d(signal_tensor)
-    detail1,detail2,detail3 = wavelet_signals(tensor_butter)
-    detail1 = select_chanels(detail1,canales)
-    detail2 = select_chanels(detail2,canales)
-    detail3 = select_chanels(detail3,canales)
-    print(detail1.shape)
-    # np.save("./detalle1.npy", detail1)
-    # np.save("./detalle2.npy", detail2)
-    # np.save("./detalle3.npy", detail3)
-    input_train = [detail1,detail2,detail3]
-
-    selected_channels = ['I', 'II', 'III', 'V1', 'V2', 'V3']
-    # Train the models on the signals.
+        # Guardar temporalmente
+        np.save(f'temp_signals/{rec_name}.npy', signal)
+        np.save(f'temp_labels/{rec_name}.npy', label)
+    
     if verbose:
-        print('Training the model on the signal data...')
-        print(f'Number of signals: {len(all_signals)}')
-        print(f'Signal tensor shape: {signal_tensor.shape}')
-        print(f'Padded length: {padded_length}')
+        print(f'{num_records} signals processed and saved temporarily.')
+    
+    signal_folder = 'temp_signals'
+    label_folder = 'temp_labels'
+    batch_size = 16
+    canales = [0, 4, 6, 8]
+    canales = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11]
+    
+    signal_files = os.listdir(signal_folder)
+    num_files = len(signal_files)
+    
+    # Listas para ir almacenando los batches procesados
+    all_detail1 = []
+    all_detail2 = []
+    all_detail3 = []
+    all_labels = []
+    
+    for i in range(0, num_files, batch_size):
+        batch_files = signal_files[i:i+batch_size]
+    
+        all_signals = []
+        labels_batch = []
+    
+        for f in batch_files:
+            signal = np.load(os.path.join(signal_folder, f))
+            label = np.load(os.path.join(label_folder, f))
+            all_signals.append(signal)
+            labels_batch.append(label)
+    
+        labels_batch = np.asarray(labels_batch, dtype=bool)
+    
+        # Crear tensor de señal
+        signal_tensor, padded_length = create_signal_tensor(all_signals, signal_info=None, verbose=False, target_length=False)
+    
+        # Padding y filtrado
+        signal_tensor = pad_signal_tensor(signal_tensor)
+        tensor_butter = filtro_señal_3d(signal_tensor)
+        detail1_batch, detail2_batch, detail3_batch = wavelet_signals(tensor_butter)
+    
+        # Selección de canales
+        detail1_batch = select_chanels(detail1_batch, canales)
+        detail2_batch = select_chanels(detail2_batch, canales)
+        detail3_batch = select_chanels(detail3_batch, canales)
+    
+        # Guardar batch en listas
+        all_detail1.append(detail1_batch)
+        all_detail2.append(detail2_batch)
+        all_detail3.append(detail3_batch)
+        all_labels.append(labels_batch)
+    
+    # Concatenar todos los batches
+    detail1 = np.concatenate(all_detail1, axis=0)
+    detail2 = np.concatenate(all_detail2, axis=0)
+    detail3 = np.concatenate(all_detail3, axis=0)
+    labels = np.concatenate(all_labels, axis=0)
+    
+    print(detail1.shape, detail2.shape, detail3.shape)
+    print(labels.shape)
+    
         
-    all_channels = ['I', 'II', 'III', 'AVR', 'AVL', 'AVF', 'V1', 'V2', 'V3', 'V4', 'V5', 'V6']
-    selected_indices = [all_channels.index(ch) for ch in selected_channels]
+        # labels = tu vector booleano
+    labels_int = labels.astype(int)  # convertir a 0/1
+    class_weights = class_weight.compute_class_weight(
+        class_weight='balanced',
+        classes=np.unique(labels_int),
+        y=labels_int
+    )
+    class_weights = dict(enumerate(class_weights))
+    print(class_weights)
     
-    # Crear lista de señales solo con los canales seleccionados
-    signal_list = [signal_tensor[:, :, i:i+1] for i in selected_indices]
     
-    # dataset = build_dataset(signal_tensor, labels, batch_size=8)
     model = cnn_model2(detail1)
     
     model.compile(optimizer=tf.keras.optimizers.Adam(learning_rate=1e-4),
                   loss="binary_crossentropy",
                   metrics=["accuracy"])
-
-    # y_train = labels
-    # y_train_onehot = tf.keras.utils.to_categorical(y_train, num_classes=2)
-    # y = np.argmax(y_train_onehot, axis=1) 
-    # y = y.reshape(-1)
     
-    # print("Y_train: ", y_train.shape)
-    # print("y_train_onehot: ", y_train_onehot.shape)
-    # print("y: ", y.shape)
+    # plot_model(model, to_file='modelo_cnn.png', show_shapes=True, show_layer_names=True)
+    print("Imagen del modelo guardada como 'modelo_cnn.png'")
+    epochs = 1
+    
+    idx = np.random.randint(0, detail1.shape[0])
+    
+    # Señales correspondientes a ese índice (primer canal de cada detalle)
+    sig1 = detail1[idx, :, 0]
+    sig2 = detail2[idx, :, 0]
+    sig3 = detail3[idx, :, 0]
+    
+    # Crear la figura
+    plt.figure(figsize=(15, 5))
+    plt.plot(sig1, label='Detail 1')
+    plt.plot(sig2, label='Detail 2')
+    plt.plot(sig3, label='Detail 3')
+    plt.title(f'Señales de un ejemplo aleatorio (índice {idx})')
+    plt.xlabel('Time')
+    plt.ylabel('Amplitude')
+    plt.legend()
+    
+    # Guardar la figura como PNG
+    plt.savefig('senal_aleatoria.png', dpi=300)
+    print("Figura guardada como 'senal_aleatoria.png'")
+    
+    # Mostrar la figura
+    plt.show()
 
 
-    epochs = 10
+    clases, conteos = np.unique(labels, return_counts=True)
 
+    for c, n in zip(clases, conteos):
+        print(f"Clase {c}: {n} muestras")
+   
+    cnn_model_history = model.fit(
+    [detail1, detail2, detail3],
+    labels.astype(np.float32),
+    epochs=epochs,
+    class_weight=class_weights
+    )
+    
     log_memory("Before training")
-    cnn_model_history = model.fit([detail1,detail2,detail3],labels, epochs = epochs)
+    
+    plt.bar(clases.astype(str), conteos)
+    plt.xlabel("Clases")
+    plt.ylabel("Número de muestras")
+    plt.title("Distribución de clases (True/False)")
+    plt.show()
+    
+
+
+    history_dict = cnn_model_history.history
+    print(history_dict.keys())
+    
+    
+    plt.plot(cnn_model_history.history['accuracy'], label='Entrenamiento')
+    # plt.plot(cnn_model_history.history['val_acc'], label='Validación')
+    plt.xlabel('Épocas')
+    plt.ylabel('Accuracy')
+    plt.legend()
+    plt.savefig("metrics.png")
+    plt.grid(True)
+    plt.show()
 
     log_memory("After Training")
     # Create a folder for the model if it does not already exist.
