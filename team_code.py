@@ -301,7 +301,7 @@ def train_model(data_folder, model_folder, verbose):
     
     # plot_model(model, to_file='modelo_cnn.png', show_shapes=True, show_layer_names=True)
     print("Imagen del modelo guardada como 'modelo_cnn.png'")
-    epochs = 1
+    epochs = 100
     
     idx = np.random.randint(0, detail1.shape[0])
     
