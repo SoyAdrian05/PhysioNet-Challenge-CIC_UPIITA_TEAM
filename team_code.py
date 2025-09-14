@@ -229,7 +229,8 @@ def train_model(data_folder, model_folder, verbose):
     batch_size = 16
     canales = [0, 4, 6, 8]
     #canales = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11]
-    
+
+    print('num_canales: ', canales)
     signal_files = os.listdir(signal_folder)
     num_files = len(signal_files)
     
