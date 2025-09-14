@@ -299,33 +299,10 @@ def train_model(data_folder, model_folder, verbose):
                   loss="binary_crossentropy",
                   metrics=["accuracy"])
     
-    # plot_model(model, to_file='modelo_cnn.png', show_shapes=True, show_layer_names=True)
-    print("Imagen del modelo guardada como 'modelo_cnn.png'")
     epochs = 100
     
     idx = np.random.randint(0, detail1.shape[0])
     
-    # Señales correspondientes a ese índice (primer canal de cada detalle)
-    sig1 = detail1[idx, :, 0]
-    sig2 = detail2[idx, :, 0]
-    sig3 = detail3[idx, :, 0]
-    
-    # Crear la figura
-    plt.figure(figsize=(15, 5))
-    plt.plot(sig1, label='Detail 1')
-    plt.plot(sig2, label='Detail 2')
-    plt.plot(sig3, label='Detail 3')
-    plt.title(f'Señales de un ejemplo aleatorio (índice {idx})')
-    plt.xlabel('Time')
-    plt.ylabel('Amplitude')
-    plt.legend()
-    
-    # Guardar la figura como PNG
-    plt.savefig('senal_aleatoria.png', dpi=300)
-    print("Figura guardada como 'senal_aleatoria.png'")
-    
-    # Mostrar la figura
-    plt.show()
 
 
     clases, conteos = np.unique(labels, return_counts=True)
