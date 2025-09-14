@@ -290,9 +290,6 @@ def train_model(data_folder, model_folder, verbose):
     
     epochs = 100
     
-    idx = np.random.randint(0, detail1.shape[0])
-    
-
 
     clases, conteos = np.unique(labels, return_counts=True)
 
@@ -301,9 +298,8 @@ def train_model(data_folder, model_folder, verbose):
    
     cnn_model_history = model.fit(
     [detail1, detail2, detail3],
-    labels.astype(np.float32),
-    epochs=epochs,
-    class_weight=class_weights
+    labels,
+    epochs=epochs
     )
     
     log_memory("Before training")
