@@ -281,17 +281,6 @@ def train_model(data_folder, model_folder, verbose):
     print(detail1.shape, detail2.shape, detail3.shape)
     print(labels.shape)
     
-        
-        # labels = tu vector booleano
-    labels_int = labels.astype(int)  # convertir a 0/1
-    class_weights = class_weight.compute_class_weight(
-        class_weight='balanced',
-        classes=np.unique(labels_int),
-        y=labels_int
-    )
-    class_weights = dict(enumerate(class_weights))
-    print(class_weights)
-    
     
     model = cnn_model2(detail1)
     
