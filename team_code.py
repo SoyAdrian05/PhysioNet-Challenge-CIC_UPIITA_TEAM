@@ -308,11 +308,11 @@ def train_model(data_folder, model_folder, verbose):
     
     log_memory("Before training")
     
-    plt.bar(clases.astype(str), conteos)
-    plt.xlabel("Clases")
-    plt.ylabel("Número de muestras")
-    plt.title("Distribución de clases (True/False)")
-    plt.show()
+    #plt.bar(clases.astype(str), conteos)
+    #plt.xlabel("Clases")
+    #plt.ylabel("Número de muestras")
+    #plt.title("Distribución de clases (True/False)")
+    #plt.show()
     
 
 
@@ -320,14 +320,14 @@ def train_model(data_folder, model_folder, verbose):
     print(history_dict.keys())
     
     
-    plt.plot(cnn_model_history.history['accuracy'], label='Entrenamiento')
+    #plt.plot(cnn_model_history.history['accuracy'], label='Entrenamiento')
     # plt.plot(cnn_model_history.history['val_acc'], label='Validación')
-    plt.xlabel('Épocas')
-    plt.ylabel('Accuracy')
-    plt.legend()
-    plt.savefig("metrics.png")
-    plt.grid(True)
-    plt.show()
+    #plt.xlabel('Épocas')
+    #plt.ylabel('Accuracy')
+    #plt.legend()
+    #plt.savefig("metrics.png")
+    #plt.grid(True)
+    #plt.show()
 
     log_memory("After Training")
     # Create a folder for the model if it does not already exist.
