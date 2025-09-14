@@ -218,8 +218,11 @@ def train_model(data_folder, model_folder, verbose):
         signal = signal.astype(np.float32)
     
         # Guardar temporalmente
-        np.save(f'temp_signals/{rec_name}.npy', signal)
-        np.save(f'temp_labels/{rec_name}.npy', label)
+        base_name = os.path.basename(rec_name)
+        
+        np.save(f'temp_signals/{base_name}.npy', signal)
+        np.save(f'temp_labels/{base_name}.npy', label)
+
     
     if verbose:
         print(f'{num_records} signals processed and saved temporarily.')
