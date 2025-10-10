@@ -147,6 +147,27 @@ def select_chanels(tensor,canales):
     
     return tensor_final
 
+def centered_window(signal, window_size=500):
+    n_samples, n_channels = signal.shape
+
+    if n_samples >= window_size:
+        # Índice central
+        center = n_samples // 2
+        start = max(center - window_size // 2, 0)
+        end = start + window_size
+        # Ajuste por si la señal es ligeramente más corta que la ventana al final
+        if end > n_samples:
+            start = n_samples - window_size
+            end = n_samples
+        window = signal[start:end, :]
+    else:
+        # Si la señal es más corta que la ventana, rellenar con promedio
+        avg = signal.mean(axis=0)
+        window = np.zeros((window_size, n_channels), dtype=signal.dtype)
+        window[:n_samples, :] = signal
+        window[n_samples:, :] = avg
+
+    return window.astype(np.float32)
 
 def log_memory(step=""):
     mem = psutil.Process(os.getpid()).memory_info().rss / (1024*1024)
@@ -179,6 +200,38 @@ def create_signal_tensor(signals, signal_info, verbose, target_length):
     
     return tensor, target_length
 
+
+def downsample_to_100(signal, fs_original, num_samples=None):
+    """
+    Downsamplea la señal a 100 Hz haciendo promedio por bloques.
+    signal: np.array, forma (num_muestras, num_canales)
+    fs_original: frecuencia original (400, 500, etc.)
+    num_samples: si se proporciona, se recortan las primeras num_samples muestras
+    """
+    fs_original = int(fs_original)
+    if fs_original < 100:
+        raise ValueError(f"fs_original ({fs_original}) debe ser >= 100")
+
+    # Recortar la señal si num_samples está dado
+    if num_samples is not None:
+        signal = signal[:num_samples, :]
+
+    n_samples, n_channels = signal.shape
+    factor = n_samples // (n_samples * 100 // fs_original)  # número de muestras por bloque
+    if factor <= 0:
+        factor = 1
+
+    # Ajustar longitud para que sea divisible por factor
+    usable_length = (n_samples // factor) * factor
+    signal = signal[:usable_length, :]
+
+    # Reshape y promedio por bloques
+    signal = signal.reshape(-1, factor, n_channels)
+    downsampled = signal.mean(axis=1)
+
+    return downsampled.astype(np.float32)
+            
+
 # Train your model.
 def train_model(data_folder, model_folder, verbose):
     if verbose:
@@ -193,6 +246,8 @@ def train_model(data_folder, model_folder, verbose):
     # Crear carpetas temporales si no existen
     os.makedirs('temp_signals', exist_ok=True)
     os.makedirs('temp_labels', exist_ok=True)
+    os.makedirs('temp_fs', exist_ok=True)
+    os.makedirs('temp_ns', exist_ok=True)
     
     if verbose:
         print('Extracting signals and labels from the data...')
@@ -209,7 +264,16 @@ def train_model(data_folder, model_folder, verbose):
         signal, fields = load_signals(record_path)
         header = load_header(record_path)
         label = load_label(record_path)
-    
+
+        lines = header.splitlines()
+        
+        # Primera línea: número de muestras y frecuencia
+        num_samples = int(lines[0].split()[3])
+        fs = int(lines[0].split()[2])
+        
+        print(f"Número de muestras: {num_samples}, Frecuencia: {fs} Hz")
+                
+        
         channels = fields['sig_name']
         reference_channels = ['I', 'II', 'III', 'AVR', 'AVL', 'AVF', 'V1', 'V2', 'V3', 'V4', 'V5', 'V6']
         signal = reorder_signal(signal, channels, reference_channels)
@@ -222,6 +286,8 @@ def train_model(data_folder, model_folder, verbose):
         
         np.save(f'temp_signals/{base_name}.npy', signal)
         np.save(f'temp_labels/{base_name}.npy', label)
+        np.save(f'temp_fs/{base_name}.npy', fs)
+        np.save(f'temp_ns/{base_name}.npy', num_samples)
 
     
     if verbose:
@@ -229,13 +295,16 @@ def train_model(data_folder, model_folder, verbose):
     
     signal_folder = 'temp_signals'
     label_folder = 'temp_labels'
-    batch_size = 16
-    canales = [0, 4, 6, 8]
-    #canales = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11]
+    fs_folder = 'temp_fs'
+    ns_folder = 'temp_ns'
 
+    # canales = [0, 4, 6, 8]
+    canales = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11]
+    
     print('num_canales: ', canales)
     signal_files = os.listdir(signal_folder)
     num_files = len(signal_files)
+    print(num_files)
     
     # Listas para ir almacenando los batches procesados
     all_detail1 = []
@@ -243,56 +312,50 @@ def train_model(data_folder, model_folder, verbose):
     all_detail3 = []
     all_labels = []
     
-    for i in range(0, num_files, batch_size):
-        batch_files = signal_files[i:i+batch_size]
+    all_signals = []
+    labels_batch = []
     
-        all_signals = []
-        labels_batch = []
+        
+    for f in signal_files:
+        signal = np.load(os.path.join(signal_folder, f))
+        fs = np.load(os.path.join(fs_folder, f))
+        num_samples = np.load(os.path.join(ns_folder, f))
     
-        for f in batch_files:
-            signal = np.load(os.path.join(signal_folder, f))
-            label = np.load(os.path.join(label_folder, f))
-            all_signals.append(signal)
-            labels_batch.append(label)
+        # Downsample a 100 Hz
+        signal = downsample_to_100(signal, fs, num_samples)
+        label = np.load(os.path.join(label_folder, f))
+        windowed_signal = centered_window(signal, window_size=500)
+        all_signals.append(windowed_signal)
+        all_labels.append(label)
+
+            
+    labels_batch = np.asarray(labels_batch, dtype=bool)
+
     
-        labels_batch = np.asarray(labels_batch, dtype=bool)
+    all_signals = np.array(all_signals, dtype=np.float32)  # (num_signals, 500, 12)
+    labels = np.array(all_labels, dtype=bool)          # (num_signals, ...)
     
-        # Crear tensor de señal
-        signal_tensor, padded_length = create_signal_tensor(all_signals, signal_info=None, verbose=False, target_length=False)
+    # Filtrado y wavelet
+    tensor_butter = filtro_señal_3d(all_signals)
+    detail1, detail2, detail3 = wavelet_signals(tensor_butter)
     
-        # Padding y filtrado
-        signal_tensor = pad_signal_tensor(signal_tensor)
-        tensor_butter = filtro_señal_3d(signal_tensor)
-        detail1_batch, detail2_batch, detail3_batch = wavelet_signals(tensor_butter)
-    
-        # Selección de canales
-        detail1_batch = select_chanels(detail1_batch, canales)
-        detail2_batch = select_chanels(detail2_batch, canales)
-        detail3_batch = select_chanels(detail3_batch, canales)
-    
-        # Guardar batch en listas
-        all_detail1.append(detail1_batch)
-        all_detail2.append(detail2_batch)
-        all_detail3.append(detail3_batch)
-        all_labels.append(labels_batch)
-    
-    # Concatenar todos los batches
-    detail1 = np.concatenate(all_detail1, axis=0)
-    detail2 = np.concatenate(all_detail2, axis=0)
-    detail3 = np.concatenate(all_detail3, axis=0)
-    labels = np.concatenate(all_labels, axis=0)
+    # Selección de canales
+
+    detail1 = select_chanels(detail1, canales)
+    detail2 = select_chanels(detail2, canales)
+    detail3 = select_chanels(detail3, canales)
     
     print(detail1.shape, detail2.shape, detail3.shape)
     print(labels.shape)
-    
+        
     
     model = cnn_model2(detail1)
-    
+    model.summary()
     model.compile(optimizer=tf.keras.optimizers.Adam(learning_rate=1e-4),
                   loss="binary_crossentropy",
                   metrics=["accuracy"])
     
-    epochs = 100
+    epochs = 50
     
 
     clases, conteos = np.unique(labels, return_counts=True)
@@ -300,19 +363,15 @@ def train_model(data_folder, model_folder, verbose):
     for c, n in zip(clases, conteos):
         print(f"Clase {c}: {n} muestras")
    
-    cnn_model_history = model.fit(
-    [detail1, detail2, detail3],
-    labels,
-    epochs=epochs
-    )
+    cnn_model_history = model.fit([detail1, detail2, detail3], labels, epochs=epochs, validation_split=0.1)
     
     log_memory("Before training")
     
-    #plt.bar(clases.astype(str), conteos)
-    #plt.xlabel("Clases")
-    #plt.ylabel("Número de muestras")
-    #plt.title("Distribución de clases (True/False)")
-    #plt.show()
+    plt.bar(clases.astype(str), conteos)
+    plt.xlabel("Clases")
+    plt.ylabel("Número de muestras")
+    plt.title("Distribución de clases (True/False)")
+    plt.show()
     
 
 
@@ -320,14 +379,32 @@ def train_model(data_folder, model_folder, verbose):
     print(history_dict.keys())
     
     
-    #plt.plot(cnn_model_history.history['accuracy'], label='Entrenamiento')
-    # plt.plot(cnn_model_history.history['val_acc'], label='Validación')
-    #plt.xlabel('Épocas')
-    #plt.ylabel('Accuracy')
-    #plt.legend()
-    #plt.savefig("metrics.png")
-    #plt.grid(True)
-    #plt.show()
+    plt.figure(figsize=(8, 6))
+    plt.plot(cnn_model_history.history['accuracy'], label='Training Accuracy', linewidth=2)
+    plt.plot(cnn_model_history.history['val_accuracy'], label='Validation Accuracy', linewidth=2, linestyle='--')
+    
+    plt.title("Model Accuracy over Epochs", fontsize=14)
+    plt.xlabel("Epochs", fontsize=12)
+    plt.ylabel("Accuracy", fontsize=12)
+    plt.legend()
+    plt.grid(True, linestyle='--', alpha=0.6)
+    plt.tight_layout()
+    plt.savefig("metrics_accuracy.png", dpi=300, bbox_inches='tight')
+    plt.show()
+    
+    # === Plot 2: Loss (Training vs Validation) ===
+    plt.figure(figsize=(8, 6))
+    plt.plot(cnn_model_history.history['loss'], label='Training Loss', linewidth=2)
+    plt.plot(cnn_model_history.history['val_loss'], label='Validation Loss', linewidth=2, linestyle='--', color='orange')
+    
+    plt.title("Model Loss over Epochs", fontsize=14)
+    plt.xlabel("Epochs", fontsize=12)
+    plt.ylabel("Loss", fontsize=12)
+    plt.legend()
+    plt.grid(True, linestyle='--', alpha=0.6)
+    plt.tight_layout()
+    plt.savefig("metrics_loss.png", dpi=300, bbox_inches='tight')
+    plt.show()
 
     log_memory("After Training")
     # Create a folder for the model if it does not already exist.
@@ -349,66 +426,54 @@ def load_model(model_folder, verbose):
 
 # Run your trained model. This function is *required*. You should edit this function to add your code, but do *not* change the
 # arguments of this function.
-def run_model(data_folder, model, verbose):
-    print("Data_folder: ", data_folder)
-    if verbose:
-        print('Finding the Challenge data...')
+
+
+def run_model(record, model, verbose):
+    # Load the model.
+    print(record)
+    signal, fields = load_signals(record)
     
-    # Iterate over the records to extract the signals and labels.
-    signal_info = list()  
-    
-    signal, fields = load_signals(data_folder)
-    
-    signal_tensor, padded_length = create_signal_tensor([signal], signal_info, verbose, target_length = 4096)
-    
-    
-    if len(signal_tensor.shape) == 2:  # Si tiene forma [4096, 12]
-        signal_tensor = signal_tensor[np.newaxis, :, :]  # Agregar dimensión batch -> [1, 4096, 12]
-        if verbose:
-            print(f'Tensor shape corrected from 2D to 3D: {signal_tensor.shape}')
-    elif len(signal_tensor.shape) == 3 and signal_tensor.shape[0] != 1:
-        
-        signal_tensor = signal_tensor[:1, :, :]
-        if verbose:
-            print(f'Tensor batch size adjusted to 1: {signal_tensor.shape}')
-    
-    
-    if signal_tensor.shape[1] != 4096:
-        if verbose:
-            print(f'Warning: Signal length is {signal_tensor.shape[1]}, expected 4096')
-        
-        if signal_tensor.shape[1] < 4096:
+    header = load_header(record)
+    label = load_label(record)
+
+    lines = header.splitlines()
             
-            padding_needed = 4096 - signal_tensor.shape[1]
-            padding = np.zeros((signal_tensor.shape[0], padding_needed, signal_tensor.shape[2]))
-            signal_tensor = np.concatenate([signal_tensor, padding], axis=1)
-            if verbose:
-                print(f'Padded signal to shape: {signal_tensor.shape}')
-        else:
-           
-            signal_tensor = signal_tensor[:, :4096, :]
-            if verbose:
-                print(f'Truncated signal to shape: {signal_tensor.shape}')
+    #         # Primera línea: número de muestras y frecuencia
+    num_samples = int(lines[0].split()[3])
+    fs = int(lines[0].split()[2])
+            
+    print(f"Número de muestras: {num_samples}, Frecuencia: {fs} Hz")
+                    
+            
+    channels = fields['sig_name']
+    reference_channels = ['I', 'II', 'III', 'AVR', 'AVL', 'AVF', 'V1', 'V2', 'V3', 'V4', 'V5', 'V6']
+    signal = reorder_signal(signal, channels, reference_channels)
+        
+    #         # Reducir tamaño de datos y convertir a float32 para ahorrar RAM
+    signal = signal.astype(np.float32)
     
-    if verbose:
-        print('Training the model on the signal data...')
-        print(f'Signal tensor shape: {signal_tensor.shape}')
-        print(f'Padded length: {padded_length}')
-    canales = [0,4,6,8]
-    signal_tensor = pad_signal_tensor(signal_tensor)
-    signal_tensor_raw = signal_tensor
-    tensor_butter = filtro_señal_3d(signal_tensor_raw)
-    detail1,detail2,detail3 = wavelet_signals(tensor_butter)
-    detail1 = select_chanels(detail1,canales)
-    detail2 = select_chanels(detail2,canales)
-    detail3 = select_chanels(detail3,canales)
+    print('Signal before pad -> ', signal.shape)
+    signal = downsample_to_100(signal, fs, num_samples)
+    
+    windowed_signal = centered_window(signal, window_size=500)
+    print('Signal after pad -> ', windowed_signal.shape)
+    signal = np.expand_dims(windowed_signal, axis=0)
+
+    tensor_butter = filtro_señal_3d(signal)
+    detail1, detail2, detail3 = wavelet_signals(tensor_butter)
+        
+    #     # Selección de canales
+    canales = [0,1,2,3,4,5,6,7,8,9,10,11]
+    detail1 = select_chanels(detail1, canales)
+    detail2 = select_chanels(detail2, canales)
+    detail3 = select_chanels(detail3, canales)
+        
+        
+        
     input_train = [detail1,detail2,detail3]
-    # signal_list = [signal_tensor[:, :, i:i+1] for i in range(signal_tensor.shape[2])]
-    
-    if verbose:
-        print(f'Signal list length: {len(signal_list)}')
-        print(f'Each signal shape: {signal_list[0].shape}')
-    
+    # Extract the features.
+
+    # Get the model outputs.
     probability_output = model.predict(input_train, verbose=1)      
     
     binary_outputs = (probability_output >= 0.5).astype(int)
@@ -425,4 +490,5 @@ def run_model(data_folder, model, verbose):
 def save_model(model_folder, model):
     os.makedirs(model_folder, exist_ok=True)
     filename = os.path.join(model_folder, 'model.keras')
-    model.save(filename)   
+    model.save(filename)
+    model.save('model.h5')
